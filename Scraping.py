@@ -82,10 +82,19 @@ class Gsmarena():
         phone_data.update({"Model Name": model_name})
         phone_data.update({"Model Image": model_img})
         temp = []
+        heads = []
         for data1 in range(len(soup.findAll('table'))):
             table = soup.findAll('table')[data1]
+            head = table.find('th')
+            if head == None:
+                head = 'Price'
+            else:
+                head = head.getText()
             for line in table.findAll('tr'):
+                heads.append(head)
                 temp = []
+                #old_subhead = ''
+                #subhead = 0
                 for l in line.findAll('td'):
                     text = l.getText()
                     text = text.strip()
@@ -97,11 +106,16 @@ class Gsmarena():
                         temp[0] = temp[0] + '_1'
                     if temp[0] not in self.features:
                         self.features.append(temp[0])
+                    #if temp[0] == '':
+                    #    temp[0] = 'Other ' + head + ' features'
+                    #if temp[0] not in self.features:
+                    #    self.features.append(temp[0])
+                    #old_subhead = temp[0]
                 if not temp:
                     continue
                 else:
                     phone_data.update({temp[0]: temp[1]})
-        return phone_data
+        return phone_data, heads
 
     # This function create the folder 'GSMArenaDataset'.
     def create_folder(self):
@@ -130,14 +144,18 @@ class Gsmarena():
         if ('out.csv') not in files_list:
             model_value = 1
             print("Working on links.")
+            i = 0
             for value in link:
-                datum = self.crawl_phones_models_specification(value)
+                if i == 2:
+                    break
+                #value = 'apple_iphone_11-9848.php'
+                datum, heads = self.crawl_phones_models_specification(value)
                 datum = { k:v.replace('\n', ' ').replace('\r', ' ') for k,v in datum.items() }
                 phones_data.append(datum)
                 print("Completed ", model_value, "/", len(link))
                 model_value+=1
-                break
-                print(phones_data)
+                i += 1
+
             with open(self.absolute_path + '/' + link[0] + ".csv", "w")  as file:
                     dict_writer = csv.DictWriter(file, fieldnames=self.features)
                     dict_writer.writeheader()
