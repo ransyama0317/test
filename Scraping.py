@@ -1,3 +1,5 @@
+# need python version 3.6 or more
+
 import requests
 from bs4 import BeautifulSoup
 import csv
@@ -26,8 +28,10 @@ class Gsmarena():
 
         # Handing the connection error of the url.
         try:
-            page = requests.get(url)
-            time.sleep(5)
+            print("wait for access GSMArena...")
+            print("url : <" + url + ">")
+            time.sleep(30)
+            page = requests.get(url, verify=False)
             soup = BeautifulSoup(page.text, 'html.parser')  # It parses the html data from requested url.
             return soup
 
@@ -53,22 +57,10 @@ class Gsmarena():
     # This function crawl mobile phones brands models links and return the list of the links.
     def crawl_phones_models(self, finder_link):
         links = []
-        nav_link = []
         soup = self.crawl_html_page(finder_link)
-        nav_data = soup.find(class_='nav-pages')
-        if not nav_data:
-            nav_link.append(finder_link)
-        else:
-            nav_link = nav_data.findAll('a')
-            nav_link = [link['href'] for link in nav_link]
-            nav_link.append(finder_link)
-            nav_link.insert(0, nav_link.pop())
-        for link in nav_link:
-            soup = self.crawl_html_page(link)
-            data = soup.find(class_='section-body')
-            for line1 in data.findAll('a'):
-                links.append(line1['href'])
-
+        data = soup.find(class_='section-body')
+        for line1 in data.findAll('a'):
+            links.append(line1['href'])
         return links
 
     # This function crawl mobile phones specification and return the list of the all devices list of single brand.
@@ -78,9 +70,9 @@ class Gsmarena():
         model_name = soup.find(class_='specs-phone-name-title').text
         model_img_html = soup.find(class_='specs-photo-main')
         model_img = model_img_html.find('img')['src']
-        phone_data.update({"Brand": link.split('_')[0]})
-        phone_data.update({"Model Name": model_name})
-        phone_data.update({"Model Image": model_img})
+        phone_data.update({"Brand":link.split('_')[0]})
+        phone_data.update({"Model Name":model_name})
+        phone_data.update({"Model Image":model_img})
         temp = []
         heads = []
         for data1 in range(len(soup.findAll('table'))):
@@ -93,8 +85,6 @@ class Gsmarena():
             for line in table.findAll('tr'):
                 heads.append(head)
                 temp = []
-                #old_subhead = ''
-                #subhead = 0
                 for l in line.findAll('td'):
                     text = l.getText()
                     text = text.strip()
@@ -102,19 +92,15 @@ class Gsmarena():
                     text = text.rstrip()
                     text = text.replace("\n", "")
                     temp.append(text)
-                    if temp[0] in phone_data.keys():
+                    if temp[0] in phone_data.keys() and temp[0] != '':
                         temp[0] = temp[0] + '_1'
                     if temp[0] not in self.features:
                         self.features.append(temp[0])
-                    #if temp[0] == '':
-                    #    temp[0] = 'Other ' + head + ' features'
-                    #if temp[0] not in self.features:
-                    #    self.features.append(temp[0])
-                    #old_subhead = temp[0]
                 if not temp:
                     continue
                 else:
-                    phone_data.update({temp[0]: temp[1]})
+                    phone_data.update({temp[0]:temp[1]})
+        print(phone_data)
         return phone_data, heads
 
     # This function create the folder 'GSMArenaDataset'.
@@ -134,9 +120,9 @@ class Gsmarena():
 
     # This function save the devices specification to csv file.
     def save_specification_to_file(self, finder_url):
-
-        print("test")
         link = self.crawl_phones_models(finder_url)
+        print("links")
+        print(link)
         self.create_folder()
         files_list = self.check_file_exists()
         phones_data = []
@@ -155,19 +141,24 @@ class Gsmarena():
                 print("Completed ", model_value, "/", len(link))
                 model_value+=1
                 i += 1
-
             with open(self.absolute_path + '/' + link[0] + ".csv", "w")  as file:
                     dict_writer = csv.DictWriter(file, fieldnames=self.features)
                     dict_writer.writeheader()
-                    str_phones_data = json.dumps(phones_data)
-                    encoded = str_phones_data.encode('utf-8')
-                    load_list = json.loads(encoded)
-                    for dicti in load_list:
+
+                    #str_phones_data = json.dumps(phones_data)
+                    #print("str_phones_data")
+                    #print(str_phones_data)
+                    #encoded = str_phones_data.encode('utf-8')
+                    #load_list = json.loads(encoded)
+                    #load_list = json.loads(str_phones_data)
+
+                    #print("load_list")
+                    #print(load_list)
+                    for dicti in phones_data:
                         dict_writer.writerow({k:v.encode('utf-8') for k,v in dicti.items()})
             print("Data loaded in the file")
         else:
                 print(brand[0].title() + '.csv file already in your directory.')
-
 
 def main():
     obj = Gsmarena()
